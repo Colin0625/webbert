@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>portfolio</title>
+    <script>
+      const savedTheme = localStorage.getItem('theme')
+      document.documentElement.dataset.theme =
+        savedTheme === 'dark' ? 'dark' : 'light'
+    </script>
+    <style>
+      html,
+      body {
+        background: #ffffff;
+        color: #3d3d3d;
+      }
+
+      html[data-theme='dark'],
+      html[data-theme='dark'] body {
+        background: #1f1f1f;
+        color: #d7d7d7;
+      }
+    </style>
+    <script type="module" crossorigin src="/assets/index-CWb4r_8m.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index-BlDTWCYv.css">
+  </head>
+  <body>
+    <div id="root"></div>
+  </body>
+</html>
