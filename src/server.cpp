@@ -158,7 +158,7 @@ void process_request(int client_fd) {
 }
 
 int main(int argc, char* argv[]) {
-  const std::string IP = "127.0.0.1";
+  const std::string IP = "0.0.0.0";
   int port = 5001;
 
   if (argc > 1) {
