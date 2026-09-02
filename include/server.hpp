@@ -8,6 +8,7 @@
 #include <sys/types.h>
 #include <string>
 #include <thread>
+#include <condition_variable>
 
 enum class RequestType : uint8_t {
   GET = 0,
@@ -39,11 +40,14 @@ private:
   std::string ip_addr_;
   int port_;
   int server_fd_;
-  std::vector<std::jthread> threads;
-  std::mutex mt;
+  bool stopping_ = false;
+  std::mutex mt_;
+  std::condition_variable work_available_;
+  std::vector<std::jthread> threads_;
   
 public:
   Server(const std::string& ip, int port);
   bool Start();
+  void Stop();
   void Work();
 };

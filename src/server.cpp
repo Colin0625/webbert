@@ -177,15 +177,25 @@ int initialize_socket(int* fd, const std::string* IP, const int PORT) {
 bool process_request(int client_fd) {
   char buffer[4096];
 
-  ssize_t s = recv(client_fd, buffer, 4096, 0);
-  if (s <= 0) {
-    close(client_fd);
+  ssize_t received = recv(client_fd, buffer, 4096, 0);
+  if (received == 0) {
+    std::cout << "Client closed connection" << std::endl;
     return false;
   }
+
+  if (received < 0) {
+    if (errno == EAGAIN || errno == EWOULDBLOCK) {
+      std::cout << "Client timed out" << std::endl;
+      return false;
+    }
+    std::cout << "Socket error: " << std::strerror(errno) << std::endl;
+    return false;
+  }
+
   std::cout << "Received message from the client: " << std::endl;
 
-  const std::string_view request(buffer, static_cast<size_t>(s));
-  std::string_view line = get_line(buffer, static_cast<size_t>(s));
+  const std::string_view request(buffer, static_cast<size_t>(received));
+  std::string_view line = get_line(buffer, static_cast<size_t>(received));
 
   HttpRequest req = parse_request(line);
   const bool keep_alive = should_keep_alive(request, req.version);
@@ -224,11 +234,7 @@ bool process_request(int client_fd) {
   }
   std::cout << std::endl;
 
-  if (!keep_alive) {
-    close(client_fd);
-    return false;
-  }
-  return true;
+  return keep_alive;
 }
 
 
@@ -269,7 +275,7 @@ bool Server::Start() {
   int cores = std::max(std::thread::hardware_concurrency(), 1u) * (1 + (50/50));
 
   for (int i{}; i < cores; i++) {
-    threads.emplace_back(&Server::Work, this);
+    threads_.emplace_back(&Server::Work, this);
   }
 
   while (true) {
@@ -283,10 +289,21 @@ bool Server::Start() {
       &client_len
     );
 
+    if (fd < 0) {
+      std::lock_guard lock(mt_);
+
+      if (stopping_) break;
+
+      std::cout << "ERROR: " << std::strerror(errno) << std::endl;
+      continue;
+    }
+
     {
-      std::lock_guard lock(mt);
+      std::lock_guard lock(mt_);
       request_queue_.emplace(fd, client_addr, client_len);
     }
+
+    work_available_.notify_one();
 
     std::cout << "Accepted a connection from "
               << print_ip(client_addr.sin_addr)
@@ -296,20 +313,52 @@ bool Server::Start() {
   return true;
 }
 
+void Server::Stop() {
+  {
+    std::lock_guard lock(mt_);
+    if (stopping_) return;
+    stopping_ = true;
+  }
+
+  shutdown(server_fd_, SHUT_RDWR);
+  close(server_fd_);
+  work_available_.notify_all();
+}
+
 void Server::Work() {
   while (true) {
     ConnectionInfo conn;
     {
-      std::lock_guard lock(mt);
-      if (!request_queue_.size()) continue;
+      std::unique_lock lock(mt_);
+      
+      work_available_.wait(lock, [this] {
+        return stopping_ || !request_queue_.empty();
+      });
+
+      if (stopping_ && request_queue_.empty()) {
+        return;
+      }
+
       conn = request_queue_.front();
       request_queue_.pop();
     }
+
+    timeval timeout{
+      .tv_sec = 10,
+      .tv_usec = 0
+    };
+
+    setsockopt(
+      conn.fd,
+      SOL_SOCKET,
+      SO_RCVTIMEO,
+      &timeout,
+      sizeof(timeout)
+    );
+
     std::cout << "handed connection to worker" << std::endl;
-    bool open = true;
-    while (open) {
-      open = process_request(conn.fd);
-    }
+    while (process_request(conn.fd)) {}
+    close(conn.fd);
     std::cout << "Connection closed" << std::endl;
   }
 }
