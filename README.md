@@ -1,8 +1,9 @@
 # Webbert
 
-Webbert is a small multithreaded HTTP server written in C++23. It serves a
-personal website from files in `testfiles/` using a fixed URL-to-file routing
-table.
+Webbert is my custom made HTTP server that serves my personal website,
+colinsepulveda.com. It is very simple and does not support TLS encryption,
+so I put it behind nginx on a vps to keep myself and visitors safe. I asked Codex
+to make a summary for me:
 
 ## Functionality
 
@@ -14,7 +15,7 @@ table.
 - Closes idle keep-alive connections after 10 seconds.
 - Handles partial socket writes and disconnected clients safely.
 
-The server is intended to run behind a reverse proxy such as nginx, which can
+Again, the server is intended to run behind a reverse proxy such as nginx, which can
 provide public TLS termination and additional request filtering.
 
 ## Build and run
