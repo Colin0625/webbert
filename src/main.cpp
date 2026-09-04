@@ -18,7 +18,7 @@
 
 
 int main(int argc, char* argv[]) {
-  const std::string IP = "0.0.0.0";
+  const std::string IP = "127.0.0.1";
   int port = 5001;
 
   if (argc > 1) {

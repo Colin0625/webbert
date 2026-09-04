@@ -3,7 +3,7 @@
 Webbert is my custom made HTTP server that serves my personal website,
 [colinsepulveda.com](https://colinsepulveda.com). It is very simple and does not support TLS encryption,
 so I put it behind nginx on a vps to keep myself and visitors safe. I asked Codex
-to make a summary for me:
+to make a summary for me: 
 
 ## Functionality
 

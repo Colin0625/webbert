@@ -24,20 +24,20 @@
 namespace {
 
 const std::unordered_map<std::string_view, std::string_view> routes{
-  {"/",                         "testfiles/index.html"},
-  {"/education",                "testfiles/index.html"},
-  {"/projects",                 "testfiles/index.html"},
-  {"/blog",                     "testfiles/index.html"},
-  {"/projects/webbert",         "testfiles/index.html"},
-  {"/projects/networking-protocol", "testfiles/index.html"},
-  {"/index.html",               "testfiles/index.html"},
-  {"/favicon.svg",              "testfiles/favicon.svg"},
-  {"/icons.svg",                "testfiles/icons.svg"},
-  {"/resume.pdf",               "testfiles/resume.pdf"},
-  {"/assets/index-CR-rNJUf.css", "testfiles/assets/index-CR-rNJUf.css"},
-  {"/assets/index-dAvuHN_O.js",  "testfiles/assets/index-dAvuHN_O.js"},
+  {"/",                              "testfiles/index.html"},
+  {"/education",                     "testfiles/index.html"},
+  {"/projects",                      "testfiles/index.html"},
+  {"/blog",                          "testfiles/index.html"},
   {"/projects/webbert",              "testfiles/index.html"},
   {"/projects/networking-protocol",  "testfiles/index.html"},
+  {"/projects/udp-file-transfer",    "testfiles/index.html"},
+  {"/index.html",                    "testfiles/index.html"},
+  {"/favicon.svg",                   "testfiles/favicon.svg"},
+  {"/icons.svg",                     "testfiles/icons.svg"},
+  {"/resume.pdf",                    "testfiles/resume.pdf"},
+  {"/Northwestern.jpg",              "testfiles/Northwestern.jpg"},
+  {"/assets/index-DzNAaGwv.css",     "testfiles/assets/index-DzNAaGwv.css"},
+  {"/assets/index-Bm5GFTWb.js",      "testfiles/assets/index-Bm5GFTWb.js"},
 };
 
 std::string print_ip(const in_addr& address) {
