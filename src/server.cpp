@@ -23,6 +23,23 @@
 
 namespace {
 
+const std::unordered_map<std::string_view, std::string_view> routes{
+  {"/",                         "testfiles/index.html"},
+  {"/education",                "testfiles/index.html"},
+  {"/projects",                 "testfiles/index.html"},
+  {"/blog",                     "testfiles/index.html"},
+  {"/projects/webbert",         "testfiles/index.html"},
+  {"/projects/networking-protocol", "testfiles/index.html"},
+  {"/index.html",               "testfiles/index.html"},
+  {"/favicon.svg",              "testfiles/favicon.svg"},
+  {"/icons.svg",                "testfiles/icons.svg"},
+  {"/resume.pdf",               "testfiles/resume.pdf"},
+  {"/assets/index-CR-rNJUf.css", "testfiles/assets/index-CR-rNJUf.css"},
+  {"/assets/index-dAvuHN_O.js",  "testfiles/assets/index-dAvuHN_O.js"},
+  {"/projects/webbert",              "testfiles/index.html"},
+  {"/projects/networking-protocol",  "testfiles/index.html"},
+};
+
 std::string print_ip(const in_addr& address) {
   char buffer[INET_ADDRSTRLEN]{};
   if (inet_ntop(AF_INET, &address, buffer, sizeof(buffer)) == nullptr) {
@@ -100,7 +117,7 @@ bool should_keep_alive(std::string_view request, std::string_view version) {
   return equals_ignore_case(trim(version), "HTTP/1.1");
 }
 
-std::optional<std::string> load_file(std::string& path) {
+std::optional<std::string> load_file(const std::string& path) {
   if (!std::filesystem::is_regular_file(path)) {
     return std::nullopt;
   }
@@ -132,20 +149,32 @@ std::string_view get_content_type(const std::filesystem::path& path) {
 }
 
 std::optional<std::string> translate_path(std::string_view& path) {
-  if (path == "/") return "testfiles/index.html";
-  std::string res = "testfiles";
-  res += path;
-  return res;
+  const auto route = routes.find(path);
+
+  if (route == routes.end()) {
+    return std::nullopt;
+  }
+
+  return std::filesystem::path{route->second};
 }
 
 std::string_view get_line(const char* buffer, size_t len) {
-  std::string_view res(buffer, len);
+  const std::string_view res(buffer, len);
+  const size_t line_end = res.find('\n');
+  return res.substr(0, line_end);
+}
 
-  size_t offset{};
-  while (res[offset] != '\n') {
-    offset++;
+bool send_all(int fd, std::string_view data) {
+  while (!data.empty()) {
+    const ssize_t sent = send(fd, data.data(), data.size(), MSG_NOSIGNAL);
+    if (sent < 0) {
+      if (errno == EINTR) continue;
+      return false;
+    }
+    if (sent == 0) return false;
+    data.remove_prefix(static_cast<size_t>(sent));
   }
-  return res.substr(0, offset);
+  return true;
 }
 
 int initialize_socket(int* fd, const std::string* IP, const int PORT) {
@@ -204,12 +233,9 @@ bool process_request(int client_fd) {
   std::cout << req.path << std::endl;
   
 
-  std::optional<std::string> path = translate_path(req.path);
-  if (!path) {
-    throw std::runtime_error("Path does not exist");
-  }
-
-  std::optional<std::string> file = load_file(path.value());
+  const std::optional<std::string> path = translate_path(req.path);
+  std::optional<std::string> file;
+  if (path) file = load_file(*path);
 
   if (!file) {
     const std::string response =
@@ -218,19 +244,20 @@ bool process_request(int client_fd) {
     "Connection: " + std::string(keep_alive ? "keep-alive" : "close") + "\r\n"
     "\r\n";
 
-    send(client_fd, response.data(), response.size(), 0);
+    if (!send_all(client_fd, response)) return false;
     std::cout << "File did not exist, sent 404" << std::endl;
   } else {
     const std::string headers =
       "HTTP/1.1 200 OK\r\n"
-      "Content-Type: " +  std::string(get_content_type(path.value())) + "\r\n"
+      "Content-Type: " +  std::string(get_content_type(*path)) + "\r\n"
       "Content-Length: " + std::to_string(file->size()) + "\r\n"
       "Connection: " + std::string(keep_alive ? "keep-alive" : "close") + "\r\n"
       "\r\n";
 
-    send(client_fd, headers.data(), headers.size(), 0);
-    send(client_fd, file->data(), file->size(), 0);
-    std::cout << "File existed, sent " << path.value() << std::endl;
+    if (!send_all(client_fd, headers) || !send_all(client_fd, *file)) {
+      return false;
+    }
+    std::cout << "File existed, sent " << *path << std::endl;
   }
   std::cout << std::endl;
 
